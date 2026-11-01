@@ -3,12 +3,11 @@
 
 use std::path::PathBuf;
 
-use libvault::item::{Meta, Secret};
+use libvault::item::{self, Kind, Meta, Secret};
 use libvault::{Client, Connect, Cost, Error, ErrorCode, Result, Setup};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
-#[allow(clippy::large_enum_variant, reason = "a call lives for one dispatch, so its size costs nothing")]
 #[derive(Deserialize)]
 #[serde(tag = "method", rename_all = "snake_case")]
 pub enum Call {
@@ -48,12 +47,38 @@ pub enum Call {
         space: Option<String>,
         name: String,
     },
-    Add {
+    /// Allowed hosts for a well-known name are filled in by the library.
+    AddEnv {
         space: Option<String>,
-        meta: Meta,
-        secret: Secret,
-        #[serde(default)]
-        replace: bool,
+        name: String,
+        value: Zeroizing<String>,
+    },
+    /// With no `password`, the library generates one.
+    AddLogin {
+        space: Option<String>,
+        name: String,
+        username: Option<String>,
+        url: Option<String>,
+        password: Option<Zeroizing<String>>,
+    },
+    AddNote {
+        space: Option<String>,
+        name: String,
+        body: Zeroizing<String>,
+    },
+    AddSsh {
+        space: Option<String>,
+        name: String,
+        private_key: Zeroizing<String>,
+    },
+    /// The library checks the number and keeps only a safe hint in view.
+    AddCard {
+        space: Option<String>,
+        name: String,
+        number: Zeroizing<String>,
+        expiry: String,
+        cvc: Zeroizing<String>,
+        holder: String,
     },
     Remove {
         space: Option<String>,
@@ -123,6 +148,12 @@ impl Vault {
         result
     }
 
+    /// New items only: replacing one is a separate, deliberate call.
+    fn add(&mut self, space: Option<&str>, meta: Meta, secret: Secret) -> Result<Zeroizing<Vec<u8>>> {
+        self.client()?.add(space, meta, secret, false)?;
+        done()
+    }
+
     fn dispatch(&mut self, call: Call) -> Result<Zeroizing<Vec<u8>>> {
         match call {
             Call::Exists => json(&libvault::exists(&self.home)),
@@ -164,9 +195,21 @@ impl Vault {
             }
             Call::Items { space } => json(&self.client()?.items(space.as_deref())?),
             Call::Item { space, name } => json(&self.client()?.item(space.as_deref(), &name)?),
-            Call::Add { space, meta, secret, replace } => {
-                self.client()?.add(space.as_deref(), meta, secret, replace)?;
-                done()
+            Call::AddEnv { space, name, value } => self.add(space.as_deref(), Meta::env(name), Secret::Env { value: value.to_string() }),
+            Call::AddLogin { space, name, username, url, password } => {
+                let mut meta = Meta::login(name);
+                meta.username = username;
+                meta.urls.extend(url);
+                let password = password.map_or_else(item::generate_password, |password| password.to_string());
+                self.add(space.as_deref(), meta, Secret::Login { password, totp: None })
+            }
+            Call::AddNote { space, name, body } => self.add(space.as_deref(), Meta::new(Kind::Note, name), Secret::Note { body: body.to_string() }),
+            Call::AddSsh { space, name, private_key } => {
+                self.add(space.as_deref(), Meta::new(Kind::Ssh, name), Secret::Ssh { private_key: private_key.to_string() })
+            }
+            Call::AddCard { space, name, number, expiry, cvc, holder } => {
+                let (meta, secret) = item::card(name, &number, expiry, cvc.to_string(), holder)?;
+                self.add(space.as_deref(), meta, secret)
             }
             Call::Remove { space, name } => {
                 self.client()?.remove(space.as_deref(), &name)?;

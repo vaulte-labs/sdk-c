@@ -94,11 +94,10 @@ fn a_vault_is_created_used_and_locked_through_the_abi() {
     let home = dir.path().join("vault");
     let vault = new_vault(&home);
 
-    let meta = json!({ "kind": "env", "name": "OPENAI_API_KEY" });
-    let secret = json!({ "type": "env", "value": "sk-real-value" });
-    vault.call(&json!({ "method": "add", "meta": meta, "secret": secret }));
+    vault.call(&json!({ "method": "add_env", "name": "OPENAI_API_KEY", "value": "sk-real-value" }));
     let items = vault.call(&json!({ "method": "items" }));
     assert_eq!(items[0]["name"], "OPENAI_API_KEY");
+    assert_eq!(items[0]["hosts"][0], "api.openai.com", "the library's rules apply");
     assert!(!items.to_string().contains("sk-real-value"), "a list never holds a value");
     assert_eq!(vault.call(&json!({ "method": "reveal", "name": "OPENAI_API_KEY" }))["value"], "sk-real-value");
 
@@ -109,6 +108,36 @@ fn a_vault_is_created_used_and_locked_through_the_abi() {
 
     vault.call(&json!({ "method": "lock" }));
     assert_eq!(vault.call(&json!({ "method": "status" }))["unlocked"], false);
+    stop(&home);
+}
+
+#[test]
+fn every_kind_of_item_goes_through_the_librarys_rules() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("vault");
+    let vault = new_vault(&home);
+
+    vault.call(&json!({ "method": "add_login", "name": "github.com", "username": "me", "password": "chosen" }));
+    assert_eq!(vault.call(&json!({ "method": "reveal", "name": "github.com" }))["password"], "chosen");
+    assert_eq!(vault.call(&json!({ "method": "item", "name": "github.com" }))["urls"][0], "https://github.com");
+
+    vault.call(&json!({ "method": "add_login", "name": "generated" }));
+    let generated = vault.call(&json!({ "method": "reveal", "name": "generated" }));
+    assert!(generated["password"].as_str().unwrap().len() >= 16, "{generated}");
+
+    vault.call(&json!({ "method": "add_note", "name": "plan", "body": "one\ntwo" }));
+    assert_eq!(vault.call(&json!({ "method": "reveal", "name": "plan" }))["body"], "one\ntwo");
+
+    vault.call(&json!({ "method": "add_ssh", "name": "deploy", "private_key": "key" }));
+    assert_eq!(vault.call(&json!({ "method": "reveal", "name": "deploy" }))["private_key"], "key");
+
+    let card = json!({ "method": "add_card", "name": "Visa", "number": "4242424242424242", "expiry": "12/30", "cvc": "123", "holder": "A Person" });
+    vault.call(&card);
+    assert!(vault.call(&json!({ "method": "item", "name": "Visa" }))["hint"].as_str().unwrap().contains("4242"));
+    let bad = json!({ "method": "add_card", "name": "Bad", "number": "1234", "expiry": "12/30", "cvc": "123", "holder": "A Person" });
+    assert!(vault.raw(&bad.to_string()).get("error").is_some(), "a bad card number is refused");
+
+    assert!(vault.raw(&json!({ "method": "add_note", "name": "plan", "body": "again" }).to_string()).get("error").is_some(), "adding never replaces");
     stop(&home);
 }
 
@@ -127,7 +156,7 @@ fn a_failure_carries_a_stable_code_and_no_result() {
 fn nonsense_is_refused_not_a_crash() {
     let dir = tempfile::tempdir().unwrap();
     let vault = Handle::open(dir.path());
-    for call in ["", "not json", "{}", r#"{"method":"no_such_call"}"#, r#"{"method":"add"}"#, "[1,2,3]"] {
+    for call in ["", "not json", "{}", r#"{"method":"no_such_call"}"#, r#"{"method":"add_env"}"#, "[1,2,3]"] {
         assert_eq!(vault.raw(call)["code"], "error", "{call}");
     }
 }
