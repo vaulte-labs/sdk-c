@@ -1,0 +1,5 @@
+module CVaulty {
+    header "vaulty.h"
+    link "vaulty"
+    export *
+}
