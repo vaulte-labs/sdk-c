@@ -165,6 +165,9 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
     vault.call(&json!({ "method": "set_lock_settings", "settings": never }));
     assert_eq!(vault.call(&json!({ "method": "lock_settings" })), never);
 
+    assert_eq!(vault.call(&json!({ "method": "relay_status" })), json!({ "account": null, "paid_until": null }), "no subscription yet");
+    assert_eq!(vault.raw(&json!({ "method": "relay_billing" }).to_string())["code"], "not_found", "no account, no billing page");
+
     let identities = vault.raw(&json!({ "method": "autofill_identities" }).to_string());
     assert_eq!(identities["code"], "denied", "only the signed app hands identities to AutoFill: {identities}");
     let offered = vault.call(&json!({ "method": "fill_options", "origin": "https://github.com/login" }));

@@ -219,6 +219,19 @@ pub enum Call {
     Wipe { device_name: String },
     /// Who used what: every recorded event, oldest first.
     Audit,
+    /// The subscription account this device uses, as `{account, paid_until}`: `account` is null
+    /// with none, and `paid_until` (seconds since 1970) is null when the account service could not
+    /// be reached.
+    RelayStatus,
+    /// Starts the subscription, making an account on this device if it has none, and returns
+    /// `{account, url}`: the number to keep, and Stripe's checkout page to open. `email` is for
+    /// receipts. Devices with the account sync through the relay Vaulte hosts.
+    RelaySubscribe { email: Option<String> },
+    /// Uses an account the person already has, from another device, by its sixteen digits.
+    RelayAccount { number: String },
+    /// Stripe's page for this device's account, where its person cancels, changes their card or
+    /// gets invoices, as a URL string.
+    RelayBilling,
 }
 
 /// An item by its space and name.

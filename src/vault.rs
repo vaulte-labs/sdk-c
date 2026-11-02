@@ -399,6 +399,21 @@ impl Vault {
                 done()
             }
             Call::Audit => json(&self.client()?.audit()?),
+            Call::RelayStatus => {
+                let status = self.client()?.relay_status()?;
+                json(
+                    &serde_json::json!({ "account": status.as_ref().map(|(account, _)| account), "paid_until": status.and_then(|(_, until)| until) }),
+                )
+            }
+            Call::RelaySubscribe { email } => {
+                let (account, url) = self.client()?.relay_subscribe(email.as_deref(), None)?;
+                json(&serde_json::json!({ "account": account, "url": url }))
+            }
+            Call::RelayAccount { number } => {
+                self.client()?.use_relay_account(&number, None)?;
+                done()
+            }
+            Call::RelayBilling => json(&self.client()?.relay_billing()?),
         }
     }
 }
