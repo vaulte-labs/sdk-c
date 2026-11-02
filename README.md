@@ -1,8 +1,15 @@
-# Vaulte SDK: the C ABI
+# Vaulte C SDK
 
-The C ABI over [libvault](https://github.com/vaulte-labs/libvault) that every Vaulte app and SDK is
-built on, including the Mac app and the [TypeScript SDK](https://github.com/vaulte-labs/ts). Use it
-to bring Vaulte to another language.
+Use [Vaulte](https://vaulte.caeser.workers.dev) from C, Swift or any language that can call C. Its
+ABI over [libvault](https://github.com/vaulte-labs/libvault) is what every Vaulte app and other SDK
+is built on, including the Mac app and the
+[TypeScript SDK](https://github.com/vaulte-labs/sdk-typescript), so it is also where to start an
+SDK for another language.
+
+| SDK | Repository |
+|---|---|
+| C and Swift | this one |
+| TypeScript, for Bun | [sdk-typescript](https://github.com/vaulte-labs/sdk-typescript) |
 
 Four functions carry JSON, so every SDK shares one implementation of the protocol, and a new
 capability is a new call, not a new symbol:

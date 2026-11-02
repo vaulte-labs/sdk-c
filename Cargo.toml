@@ -5,7 +5,7 @@ version = "1.0.0"
 edition = "2024"
 license = "AGPL-3.0-only"
 publish = false
-repository = "https://github.com/vaulte-labs/sdk"
+repository = "https://github.com/vaulte-labs/sdk-c"
 homepage = "https://vaulte.caeser.workers.dev"
 
 [lib]

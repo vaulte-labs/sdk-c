@@ -6,7 +6,7 @@ If the AGPL's terms do not suit how you want to use them, a commercial license i
 from Vaulte Labs.
 
 To ask for one, open a
-[commercial license request](https://github.com/vaulte-labs/sdk/issues/new?template=commercial-license.yml).
+[commercial license request](https://github.com/vaulte-labs/sdk-c/issues/new?template=commercial-license.yml).
 
 Contributions are accepted under a
 [contributor license agreement](https://github.com/vaulte-labs/.github/blob/main/CLA.md), so that both can continue to
