@@ -6,5 +6,6 @@ cd "$(dirname "$0")/.."
 cargo fmt --check
 cargo clippy --all-targets --features test-hooks -- -D warnings
 cargo clippy --all-targets -- -D warnings
-results=$(cargo test --features test-hooks 2>&1 | tee /dev/stderr | grep '^test result:')
-echo "$results" | grep -q 'ok\. [1-9]' || { echo "no tests ran"; exit 1; }
+results=$(mktemp)
+cargo test --features test-hooks > "$results" 2>&1 || { cat "$results"; exit 1; }
+grep -q '^test result: ok\. [1-9]' "$results" || { cat "$results"; echo "no tests ran"; exit 1; }
