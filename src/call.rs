@@ -78,6 +78,8 @@ pub enum Call {
         space: Option<String>,
         agent: String,
         seconds: u64,
+        /// Why the agent wants it, shown in the prompt.
+        reason: Option<String>,
     },
     Grants,
     EndGrant {

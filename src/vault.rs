@@ -221,8 +221,8 @@ impl Vault {
                 done()
             }
             Call::Status => json(&self.client()?.status()?),
-            Call::Grant { space, agent, seconds } => {
-                let (token, id) = self.client()?.grant(space.as_deref(), &agent, Duration::from_secs(seconds))?;
+            Call::Grant { space, agent, seconds, reason } => {
+                let (token, id) = self.client()?.grant(space.as_deref(), &agent, Duration::from_secs(seconds), reason.as_deref())?;
                 json(&serde_json::json!({ "token": token, "id": id }))
             }
             Call::Grants => json(&self.client()?.grants()?),
