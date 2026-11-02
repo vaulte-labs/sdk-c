@@ -1,5 +1,9 @@
 # Vaulte C SDK
 
+> **[Vaulte](https://vaulte.caeser.workers.dev) is the password manager for you and your agents.** The Mac
+> app, browser extension and `vlt` CLI, with end-to-end encrypted sync across your devices, in one
+> subscription. **[Get Vaulte →](https://vaulte.caeser.workers.dev)**
+
 Use [Vaulte](https://vaulte.caeser.workers.dev) from C, Swift or any language that can call C. Its
 ABI over [libvault](https://github.com/vaulte-labs/libvault) is what every Vaulte app and other SDK
 is built on, including the Mac app and the
