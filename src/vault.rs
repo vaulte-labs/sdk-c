@@ -222,8 +222,7 @@ impl Vault {
             }
             Call::Status => json(&self.client()?.status()?),
             Call::Grant { space, agent, seconds, reason } => {
-                let (token, id) = self.client()?.grant(space.as_deref(), &agent, Duration::from_secs(seconds), reason.as_deref())?;
-                json(&serde_json::json!({ "token": token, "id": id }))
+                json(&self.client()?.grant(space.as_deref(), &agent, Duration::from_secs(seconds), reason.as_deref())?)
             }
             Call::Grants => json(&self.client()?.grants()?),
             Call::EndGrant { id } => {
@@ -246,6 +245,11 @@ impl Vault {
             Call::Spaces => json(&self.client()?.spaces()?),
             Call::CreateSpace { name } => {
                 self.client()?.create_space(&name)?;
+                done()
+            }
+            Call::RenameSpace { name, to } => json(&self.client()?.rename_space(&name, &to)?),
+            Call::RemoveSpace { name } => {
+                self.client()?.remove_space(&name)?;
                 done()
             }
             Call::Items { space } => json(&self.client()?.items(space.as_deref())?),

@@ -3,6 +3,7 @@
  *
  * Every reply is `{"result":...}` or `{"error":"...","code":"..."}`, where code is one of:
  *   error             anything else; the message says what happened
+ *   usage             the call itself was wrong, such as a value out of range
  *   locked            the vault is locked, or nobody answered the prompt in time
  *   needs_passphrase  a vault with no secure hardware needs its passphrase; ask and call again
  *   denied            the person said no, or this caller may not do that

@@ -282,6 +282,7 @@ fn backups_grants_and_two_factor_codes_go_through_the_client() {
     assert_eq!(vault.call(&json!({ "method": "status" }))["backups"], json!([]));
 
     let grant = vault.call(&json!({ "method": "grant", "space": "Personal", "agent": "claude", "seconds": 600 }));
+    assert_eq!((grant["space"].as_str(), grant["seconds"].as_u64()), (Some("Personal"), Some(600)), "{grant}");
     assert_eq!(vault.call(&json!({ "method": "grants" }))[0]["agent"], "claude");
     vault.call(&json!({ "method": "end_grant", "id": grant["id"] }));
     assert_eq!(vault.call(&json!({ "method": "grants" })), json!([]));
@@ -486,4 +487,21 @@ fn an_item_shown_in_two_spaces_and_a_passkey_go_through_the_client() {
     assert_eq!(signed["credential_id"], created["credential_id"]);
     assert_eq!(signed["user_handle"], json!([1, 2, 3]));
     vault.call(&json!({ "method": "stop" }));
+}
+
+#[test]
+fn a_space_is_renamed_and_removed_by_name_and_says_what_it_is_called() {
+    let dir = tempfile::tempdir().unwrap();
+    let vault = new_vault(&dir.path().join("vault"));
+    vault.call(&json!({ "method": "unlock" }));
+    vault.call(&json!({ "method": "create_space", "name": " Work " }));
+    assert_eq!(vault.call(&json!({ "method": "spaces" })), json!(["Personal", "Work"]));
+    assert_eq!(vault.raw(r#"{"method":"create_space","name":"work"}"#)["code"], "error", "one name each, whatever its case");
+    assert_eq!(vault.call(&json!({ "method": "rename_space", "name": "Work", "to": "Clients" })), "Clients");
+    vault.call(&json!({ "method": "add_env", "space": "Clients", "name": "KEY", "value": "v" }));
+    let held = vault.raw(r#"{"method":"remove_space","name":"Clients"}"#);
+    assert!(held["error"].as_str().unwrap().contains("holds 1 item"), "{held}");
+    vault.call(&json!({ "method": "remove", "space": "Clients", "name": "KEY" }));
+    vault.call(&json!({ "method": "remove_space", "name": "Clients" }));
+    assert_eq!(vault.call(&json!({ "method": "spaces" })), json!(["Personal"]));
 }

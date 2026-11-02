@@ -59,7 +59,8 @@ pub enum Call {
     ConnectShared { folder: PathBuf, passphrase: Option<Zeroizing<String>>, session: Option<Zeroizing<String>> },
     /// The vault's state: whether it is unlocked, its devices, backups and problems.
     Status,
-    /// A session for an agent, limited to one space. Hand its `token` to `connect`.
+    /// A session for an agent, limited to one space, as `{"token","id","space","seconds"}`. Hand
+    /// its `token` to `connect`. It lasts from a second to 24 hours; anything else is refused.
     Grant {
         space: Option<String>,
         agent: String,
@@ -79,8 +80,15 @@ pub enum Call {
     Lock,
     /// The space names, as an array of strings.
     Spaces,
-    /// Makes a new, empty space.
+    /// Makes a new, empty space, named without the spaces around it. A name differing only by case
+    /// from one in use is refused, and a removed space with this name comes back.
     CreateSpace { name: String },
+    /// Renames a space after a touch, and returns its new name as kept. Its items and grants go
+    /// with it. Personal keeps its name.
+    RenameSpace { name: String, to: String },
+    /// Removes an empty space after a touch. One holding anything is refused, saying how much it
+    /// holds. `create_space` with its name brings it back with its history. Personal stays.
+    RemoveSpace { name: String },
     /// The items in a space, without their secrets.
     Items { space: Option<String> },
     /// One item without its secret.
@@ -121,7 +129,9 @@ pub enum Call {
     /// Reverses this device's last change not undone yet, after a touch. Each call goes one
     /// change further back. Returns the names of the items it changed back.
     Undo,
-    /// An item's versions, oldest first. A version's index is what `restore` takes.
+    /// An item's versions, oldest first, each with `at_ms`, `deleted`, its `name`, what it
+    /// `changed` from the one before and whether it is `current`. A version's index is what
+    /// `restore` takes.
     History { space: Option<String>, name: String },
     /// Makes one of an item's versions current again, as a new change.
     Restore { space: Option<String>, name: String, version: usize },
