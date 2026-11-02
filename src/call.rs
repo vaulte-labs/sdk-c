@@ -1,6 +1,6 @@
 //! Every call an SDK can make. A call carries its `"method"` and its fields as JSON, such as
 //! `{"method":"reveal","name":"OPENAI_API_KEY","space":"Work"}`. A call that names no result
-//! replies `{"result":null}` when it is done. A `space` left out is the first space, Personal.
+//! replies `{"result":true}` when it is done. A `space` left out is the first space, Personal.
 
 use std::path::PathBuf;
 
