@@ -164,10 +164,39 @@ fn setup_steps_need_setup_to_have_begun() {
 }
 
 #[test]
-fn null_is_safe_to_free_and_close() {
-    // SAFETY: both are documented to accept null.
+fn null_is_safe_everywhere() {
+    // SAFETY: every one of these is documented to accept null.
     unsafe {
+        let reply = lv_call(std::ptr::null_mut(), std::ptr::null());
+        assert!(CStr::from_ptr(reply).to_str().unwrap().contains("error"));
+        lv_free_string(reply);
         lv_free_string(std::ptr::null_mut());
         lv_close(std::ptr::null_mut());
     }
+}
+
+#[test]
+fn a_limited_handle_never_loses_its_limit_when_the_broker_restarts() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("vault");
+    let owner = new_vault(&home);
+    owner.call(&json!({ "method": "unlock" }));
+    owner.call(&json!({ "method": "create_space", "name": "Work" }));
+    owner.call(&json!({ "method": "add_env", "space": "Personal", "name": "PRIVATE", "value": "x" }));
+    let grant = owner.call(&json!({ "method": "grant", "space": "Work", "agent": "test", "seconds": 600 }));
+
+    let limited = Handle::open(&home);
+    limited.call(&json!({ "method": "connect", "session": grant["token"] }));
+    assert!(limited.raw(r#"{"method":"items","space":"Personal"}"#).get("error").is_some(), "limited to Work");
+
+    owner.call(&json!({ "method": "stop" }));
+    owner.call(&json!({ "method": "connect", "passphrase": PASSPHRASE }));
+    owner.call(&json!({ "method": "unlock" }));
+
+    // The first call may only find the old connection gone. None may reach the other space.
+    for _ in 0..3 {
+        let reply = limited.raw(r#"{"method":"items","space":"Personal"}"#);
+        assert!(reply.get("error").is_some(), "{reply}");
+    }
+    owner.call(&json!({ "method": "stop" }));
 }

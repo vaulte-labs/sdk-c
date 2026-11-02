@@ -2,6 +2,7 @@
 //! `{"method":"reveal","name":"OPENAI_API_KEY","space":"Work"}`.
 
 use std::path::PathBuf;
+use std::time::Duration;
 
 use libvault::item::{self, Kind, Meta, Secret};
 use libvault::{Client, Connect, Cost, Error, ErrorCode, Result, Setup};
@@ -34,6 +35,12 @@ pub enum Call {
         session: Option<Zeroizing<String>>,
     },
     Status,
+    /// A session for an agent, limited to one space. Hand its `token` to `connect`.
+    Grant {
+        space: Option<String>,
+        agent: String,
+        seconds: u64,
+    },
     /// Stops the broker, which locks the vault.
     Stop,
     Unlock,
@@ -100,10 +107,17 @@ pub struct Vault {
     home: PathBuf,
     client: Option<Client>,
     setup: Option<Setup>,
+    /// Kept for reconnecting, so a handle limited to one space can never lose that limit.
+    session: Option<Zeroizing<String>>,
 }
 
+/// Reserved up front, so a reply holding a secret never leaves a copy in a reallocated buffer.
+const REPLY_CAPACITY: usize = 64 * 1024;
+
 fn json(value: &impl Serialize) -> Result<Zeroizing<Vec<u8>>> {
-    serde_json::to_vec(value).map(Zeroizing::new).map_err(|_| Error::Usage("that reply could not be encoded"))
+    let mut reply = Zeroizing::new(Vec::with_capacity(REPLY_CAPACITY));
+    serde_json::to_writer(&mut *reply, value).map_err(|_| Error::Usage("that reply could not be encoded"))?;
+    Ok(reply)
 }
 
 fn done() -> Result<Zeroizing<Vec<u8>>> {
@@ -121,11 +135,12 @@ fn test_cost() -> Cost {
 
 impl Vault {
     pub fn new(home: PathBuf) -> Self {
-        Self { home, client: None, setup: None }
+        Self { home, client: None, setup: None, session: None }
     }
 
-    fn connect(&mut self, passphrase: Option<&str>, session: Option<&str>) -> Result<&mut Client> {
+    fn connect(&mut self, passphrase: Option<&str>) -> Result<&mut Client> {
         let daemon = test_daemon();
+        let session = self.session.as_ref().map(|session| session.as_str());
         let client = Client::connect(&self.home, Connect { passphrase, session, daemon: daemon.as_deref() })?;
         Ok(self.client.insert(client))
     }
@@ -134,7 +149,7 @@ impl Vault {
         if self.client.is_some() {
             return self.client.as_mut().ok_or(Error::Usage("connect first"));
         }
-        self.connect(None, None)
+        self.connect(None)
     }
 
     fn setup(&self) -> Result<&Setup> {
@@ -178,10 +193,15 @@ impl Vault {
                 done()
             }
             Call::Connect { passphrase, session } => {
-                self.connect(passphrase.as_ref().map(|value| value.as_str()), session.as_ref().map(|value| value.as_str()))?;
+                self.session = session;
+                self.connect(passphrase.as_ref().map(|value| value.as_str()))?;
                 done()
             }
             Call::Status => json(&self.client()?.status()?),
+            Call::Grant { space, agent, seconds } => {
+                let (token, id) = self.client()?.grant(space.as_deref(), &agent, Duration::from_secs(seconds))?;
+                json(&serde_json::json!({ "token": token, "id": id }))
+            }
             Call::Stop => {
                 self.client()?.stop()?;
                 self.client = None;

@@ -2,6 +2,9 @@
 //! the protocol and a new capability is a new [`call::Call`], not a new symbol. Policy stays in
 //! the broker: nothing here can do what `lv` could not.
 
+#[cfg(all(feature = "test-hooks", not(debug_assertions)))]
+compile_error!("test-hooks stand in for a person, so they must never reach a release build");
+
 mod call;
 
 use std::ffi::{CStr, CString, c_char};
@@ -26,7 +29,8 @@ fn error_reply(error: &Error) -> *mut c_char {
     into_reply(reply.to_string().as_bytes())
 }
 
-/// Opens a handle on the vault at `home`, or the default one when `home` is null.
+/// Opens a handle on the vault at `home`, or the default one when `home` is null. Returns null
+/// when `home` is not UTF-8.
 ///
 /// # Safety
 /// `home` is null or a valid NUL-terminated string.
@@ -49,10 +53,14 @@ pub unsafe extern "C" fn lv_open(home: *const c_char) -> *mut LvHandle {
 /// and goes to [`lv_free_string`]. Blocks while a person answers a prompt.
 ///
 /// # Safety
-/// `handle` came from [`lv_open`] and is not closed. `call` is a valid NUL-terminated string.
+/// `handle` is null or came from [`lv_open`] and is not closed, by this thread or another. `call`
+/// is null or a valid NUL-terminated string.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn lv_call(handle: *mut LvHandle, call: *const c_char) -> *mut c_char {
-    // SAFETY: the caller promises both are valid.
+    if handle.is_null() || call.is_null() {
+        return error_reply(&Error::Usage("that call makes no sense"));
+    }
+    // SAFETY: neither is null, and the caller promises both are valid.
     let (handle, call) = unsafe { (&*handle, CStr::from_ptr(call)) };
     let call: Call = match serde_json::from_slice(call.to_bytes()) {
         Ok(call) => call,

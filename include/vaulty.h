@@ -5,7 +5,8 @@
 
 typedef struct LvHandle LvHandle;
 
-/* Opens a handle on the vault at `home`, or the default one when `home` is NULL. Touches nothing. */
+/* Opens a handle on the vault at `home`, or the default one when `home` is NULL. Touches nothing.
+ * Returns NULL when `home` is not UTF-8. */
 LvHandle *lv_open(const char *home);
 
 /* Runs one JSON call and returns `{"result":...}` or `{"error":"...","code":"..."}`. Never NULL.
@@ -16,6 +17,7 @@ char *lv_call(LvHandle *handle, const char *call);
 /* Erases and frees a reply, which may hold a secret. */
 void lv_free_string(char *value);
 
+/* No lv_call may be running on this handle, on any thread. */
 void lv_close(LvHandle *handle);
 
 #endif
