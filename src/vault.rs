@@ -298,6 +298,7 @@ impl Vault {
             }
             Call::Reveal { space, name } => json(&self.client()?.reveal(space.as_deref(), &name)?),
             Call::Code { space, name } => json(&self.client()?.code(space.as_deref(), &name)?),
+            Call::Codes { space } => json(&self.client()?.codes(space.as_deref())?),
             Call::RemoveCode { space, name } => {
                 self.client()?.remove_code(space.as_deref(), &name)?;
                 done()

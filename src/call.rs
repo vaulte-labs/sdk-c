@@ -185,6 +185,11 @@ pub enum Call {
         space: Option<String>,
         name: String,
     },
+    /// Every login's current code in `space`, or every space, after one touch, which the vault's
+    /// own app does not need while the vault is open (`status.trusted`). One record per call.
+    Codes {
+        space: Option<String>,
+    },
     /// Takes two-factor off a login, after a touch. An edit that sends no setup key keeps it.
     RemoveCode {
         space: Option<String>,

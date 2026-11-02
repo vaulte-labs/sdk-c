@@ -288,6 +288,9 @@ fn backups_grants_and_two_factor_codes_go_through_the_client() {
     assert_eq!(vault.call(&json!({ "method": "grants" })), json!([]));
 
     vault.call(&json!({ "method": "add_login", "name": "github.com", "password": "x", "totp": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" }));
+    let all = vault.call(&json!({ "method": "codes" }));
+    assert_eq!((all[0]["name"].as_str(), all[0]["code"].as_str().map(str::len)), (Some("github.com"), Some(6)), "{all}");
+    assert_eq!(vault.call(&json!({ "method": "status" }))["trusted"], false);
     let code = vault.call(&json!({ "method": "code", "name": "github.com" }));
     assert_eq!(code["code"].as_str().unwrap().len(), 6, "{code}");
     assert!((1..=30).contains(&code["seconds_left"].as_u64().unwrap()), "{code}");
