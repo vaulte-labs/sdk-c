@@ -1,11 +1,12 @@
 [package]
 name = "vaulty-sdk"
-description = "The C ABI every Vaulty SDK and app is built on"
+description = "The C ABI every Vaulte SDK and app is built on"
 version = "1.0.0"
 edition = "2024"
 license = "AGPL-3.0-only"
 publish = false
-repository = "https://github.com/sayvaulty/sdk"
+repository = "https://github.com/vaulte-labs/sdk"
+homepage = "https://vaulte.caeser.workers.dev"
 
 [lib]
 name = "vaulty"
