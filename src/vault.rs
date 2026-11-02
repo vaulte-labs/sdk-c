@@ -290,6 +290,11 @@ impl Vault {
                 self.client()?.remove(space.as_deref(), &name)?;
                 done()
             }
+            Call::RemoveAll { items } => {
+                let items: Vec<_> = items.iter().map(|item| (item.space.as_deref(), item.name.as_str())).collect();
+                self.client()?.remove_all(&items)?;
+                done()
+            }
             Call::Undo => json(&self.client()?.undo()?),
             Call::History { space, name } => json(&self.client()?.history(space.as_deref(), &name)?),
             Call::Restore { space, name, version } => {

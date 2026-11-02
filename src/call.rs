@@ -165,6 +165,10 @@ pub enum Call {
         space: Option<String>,
         name: String,
     },
+    /// Removes several items as one change, so one `undo` brings them all back.
+    RemoveAll {
+        items: Vec<Named>,
+    },
     Undo,
     History {
         space: Option<String>,
@@ -317,4 +321,11 @@ pub enum Call {
         device_name: String,
     },
     Audit,
+}
+
+/// An item by its space and name.
+#[derive(Deserialize)]
+pub struct Named {
+    pub space: Option<String>,
+    pub name: String,
 }
