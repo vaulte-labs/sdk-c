@@ -109,6 +109,8 @@ pub struct Vault {
     setup: Option<Setup>,
     /// Kept for reconnecting, so a handle limited to one space can never lose that limit.
     session: Option<Zeroizing<String>>,
+    /// A vault with no secure hardware takes this in place of a touch, on each request.
+    passphrase: Option<Zeroizing<String>>,
 }
 
 /// Reserved up front, so a reply holding a secret never leaves a copy in a reallocated buffer.
@@ -135,12 +137,13 @@ fn test_cost() -> Cost {
 
 impl Vault {
     pub fn new(home: PathBuf) -> Self {
-        Self { home, client: None, setup: None, session: None }
+        Self { home, client: None, setup: None, session: None, passphrase: None }
     }
 
-    fn connect(&mut self, passphrase: Option<&str>) -> Result<&mut Client> {
+    fn connect(&mut self) -> Result<&mut Client> {
         let daemon = test_daemon();
         let session = self.session.as_ref().map(|session| session.as_str());
+        let passphrase = self.passphrase.as_ref().map(|passphrase| passphrase.as_str());
         let client = Client::connect(&self.home, Connect { passphrase, session, daemon: daemon.as_deref() })?;
         Ok(self.client.insert(client))
     }
@@ -149,7 +152,7 @@ impl Vault {
         if self.client.is_some() {
             return self.client.as_mut().ok_or(Error::Usage("connect first"));
         }
-        self.connect(None)
+        self.connect()
     }
 
     fn setup(&self) -> Result<&Setup> {
@@ -194,7 +197,8 @@ impl Vault {
             }
             Call::Connect { passphrase, session } => {
                 self.session = session;
-                self.connect(passphrase.as_ref().map(|value| value.as_str()))?;
+                self.passphrase = passphrase;
+                self.connect()?;
                 done()
             }
             Call::Status => json(&self.client()?.status()?),
