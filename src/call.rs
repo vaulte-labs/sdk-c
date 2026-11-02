@@ -179,6 +179,13 @@ pub enum Call {
     Expiring,
     /// Each login's sites and username for the system's autofill to suggest, never a secret.
     AutofillIdentities,
+    /// When this device's vault locks by itself: `{stay_unlocked, with_screen}`.
+    LockSettings,
+    /// Changes when this device's vault locks by itself, after a touch. `stay_unlocked` is
+    /// `five_minutes`, `ten_minutes`, `one_hour`, `two_hours` or `never`.
+    SetLockSettings {
+        settings: libvault::LockSettings,
+    },
     /// What could fill at `origin`, which the system or browser reports, not the page.
     FillOptions {
         origin: String,

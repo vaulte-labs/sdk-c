@@ -276,6 +276,11 @@ impl Vault {
             }
             Call::Expiring => json(&self.client()?.expiring()?),
             Call::AutofillIdentities => json(&self.client()?.autofill_identities()?),
+            Call::LockSettings => json(&self.client()?.lock_settings()?),
+            Call::SetLockSettings { settings } => {
+                self.client()?.set_lock_settings(settings)?;
+                done()
+            }
             Call::FillOptions { origin } => json(&self.client()?.fill_options(&origin)?),
             Call::Fill { space, name, origin } => json(&self.client()?.fill(&space, &name, &origin)?),
             Call::Icon { space, url } => json(&self.client()?.icon(space.as_deref(), &url)?),

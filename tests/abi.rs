@@ -160,6 +160,11 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
     let typo = json!({ "method": "add_profile", "name": "Work", "profile": { "email": "jane.example.com" } });
     assert!(vault.raw(&typo.to_string()).get("error").is_some(), "the library checks a profile's details");
 
+    assert_eq!(vault.call(&json!({ "method": "lock_settings" })), json!({ "stay_unlocked": "one_hour", "with_screen": true }));
+    let never = json!({ "stay_unlocked": "never", "with_screen": false });
+    vault.call(&json!({ "method": "set_lock_settings", "settings": never }));
+    assert_eq!(vault.call(&json!({ "method": "lock_settings" })), never);
+
     let identities = vault.call(&json!({ "method": "autofill_identities" }));
     assert!(identities.as_array().unwrap().iter().any(|identity| identity["site"] == "github.com" && identity["username"] == "me"), "{identities}");
     assert!(!identities.to_string().contains("chosen"), "no password goes to autofill");
