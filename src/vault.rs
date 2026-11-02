@@ -282,6 +282,10 @@ impl Vault {
                 self.client()?.link(space.as_deref(), &name, &to)?;
                 done()
             }
+            Call::Move { space, name, to } => {
+                self.client()?.move_item(space.as_deref(), &name, &to)?;
+                done()
+            }
             Call::Edit { space, name, meta, secret } => {
                 self.client()?.edit(space.as_deref(), &name, meta, secret)?;
                 done()

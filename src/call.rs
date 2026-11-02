@@ -153,6 +153,12 @@ pub enum Call {
         name: String,
         to: String,
     },
+    /// Takes an item out of its space and into `to`, after a touch, as one change.
+    Move {
+        space: Option<String>,
+        name: String,
+        to: String,
+    },
     /// Changes what is shown about an item, and its secret only when one is given, after a touch.
     /// The old version stays in its history.
     Edit {
