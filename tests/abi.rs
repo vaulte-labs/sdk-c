@@ -154,6 +154,12 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
 
     assert!(vault.raw(&json!({ "method": "add_note", "name": "plan", "body": "again" }).to_string()).get("error").is_some(), "adding never replaces");
 
+    vault.call(&json!({ "method": "add_profile", "name": "Home", "profile": { "first_name": "Jane", "country": "US" } }));
+    assert_eq!(vault.call(&json!({ "method": "item", "name": "Home" }))["kind"], "profile");
+    assert_eq!(vault.call(&json!({ "method": "reveal", "name": "Home" }))["first_name"], "Jane");
+    let typo = json!({ "method": "add_profile", "name": "Work", "profile": { "email": "jane.example.com" } });
+    assert!(vault.raw(&typo.to_string()).get("error").is_some(), "the library checks a profile's details");
+
     let mut meta = vault.call(&json!({ "method": "item", "name": "Visa" }));
     meta.as_object_mut().unwrap().remove("space");
     let secret = json!({ "type": "card", "number": "5555555555554444", "expiry": "01/31", "cvc": "999", "holder": "A Person" });

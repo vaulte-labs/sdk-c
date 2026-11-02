@@ -253,6 +253,7 @@ impl Vault {
                 let (meta, secret) = item::card(name, &number, expiry, cvc.to_string(), holder)?;
                 self.add(space.as_deref(), meta, secret)
             }
+            Call::AddProfile { space, name, profile } => self.add(space.as_deref(), Meta::new(Kind::Profile, name), Secret::Profile(profile)),
             Call::Edit { space, name, mut meta, secret } => {
                 // A card's number is checked, and its hint made from it, only by `item::card`.
                 if let Some(Secret::Card { number, expiry, cvc, holder }) = &secret {

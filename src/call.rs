@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use libvault::item::{Meta, Secret};
+use libvault::item::{Meta, Profile, Secret};
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
@@ -131,6 +131,12 @@ pub enum Call {
         expiry: String,
         cvc: Zeroizing<String>,
         holder: String,
+    },
+    /// A person's details for forms, any of which may be left out. A list shows only `name`.
+    AddProfile {
+        space: Option<String>,
+        name: String,
+        profile: Profile,
     },
     /// Changes what is shown about an item, and its secret only when one is given, after a touch.
     /// The old version stays in its history.
