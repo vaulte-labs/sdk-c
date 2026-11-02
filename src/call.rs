@@ -65,6 +65,13 @@ pub enum Call {
         passphrase: Option<Zeroizing<String>>,
         session: Option<Zeroizing<String>>,
     },
+    /// For the vault's own sandboxed code, such as an autofill extension: reaches a running broker
+    /// through the app group's `folder`, and never the vault's folder or a broker of its own.
+    ConnectShared {
+        folder: PathBuf,
+        passphrase: Option<Zeroizing<String>>,
+        session: Option<Zeroizing<String>>,
+    },
     Status,
     /// A session for an agent, limited to one space. Hand its `token` to `connect`.
     Grant {

@@ -40,6 +40,8 @@ pub struct Vault {
     session: Option<Zeroizing<String>>,
     /// A vault with no secure hardware takes this in place of a touch, on each request.
     passphrase: Option<Zeroizing<String>>,
+    /// The app group's folder, for a sandboxed handle that reaches the broker only there.
+    shared: Option<PathBuf>,
 }
 
 /// Reserved up front, so a reply holding a secret never leaves a copy in a reallocated buffer.
@@ -66,14 +68,29 @@ fn test_cost() -> Cost {
 
 impl Vault {
     pub fn new(home: PathBuf) -> Self {
-        Self { home, client: None, setup: None, joining: None, recovery: None, rotation: None, import: None, session: None, passphrase: None }
+        Self {
+            home,
+            client: None,
+            setup: None,
+            joining: None,
+            recovery: None,
+            rotation: None,
+            import: None,
+            session: None,
+            passphrase: None,
+            shared: None,
+        }
     }
 
     fn connect(&mut self) -> Result<&mut Client> {
         let daemon = test_daemon();
         let session = self.session.as_ref().map(|session| session.as_str());
         let passphrase = self.passphrase.as_ref().map(|passphrase| passphrase.as_str());
-        let client = Client::connect(&self.home, Connect { passphrase, session, daemon: daemon.as_deref() })?;
+        let options = Connect { passphrase, session, daemon: daemon.as_deref() };
+        let client = match &self.shared {
+            Some(folder) => Client::connect_shared(folder, options)?,
+            None => Client::connect(&self.home, options)?,
+        };
         Ok(self.client.insert(client))
     }
 
@@ -188,6 +205,13 @@ impl Vault {
                     Some(passphrase) => recovery.finish_with_passphrase(&passphrase, test_cost(), &self.home, &device_name)?,
                     None => recovery.finish_with_hardware(&self.home, &device_name)?,
                 }
+                done()
+            }
+            Call::ConnectShared { folder, passphrase, session } => {
+                self.shared = Some(folder);
+                self.session = session;
+                self.passphrase = passphrase;
+                self.connect()?;
                 done()
             }
             Call::Connect { passphrase, session } => {

@@ -442,3 +442,24 @@ fn a_sites_icon_is_saved_once_and_read_back_as_pixels() {
     assert!(vault.raw(r#"{"method":"save_icon","url":"https://x.example","png":"not base64!"}"#).get("error").is_some());
     vault.call(&json!({ "method": "stop" }));
 }
+
+#[test]
+fn a_sandboxed_handle_reaches_a_running_broker_through_the_shared_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("vault");
+    let vault = new_vault(&home);
+    let shared = home.join("shared");
+    std::fs::create_dir(&shared).unwrap();
+    vault.call(&json!({ "method": "stop" }));
+    // Started again, now with the shared folder there to listen in.
+    vault.call(&json!({ "method": "add_env", "name": "KEY", "value": "v" }));
+    let sandboxed = Handle::open(&dir.path().join("a folder the sandbox cannot see"));
+    sandboxed.call(&json!({ "method": "connect_shared", "folder": shared, "passphrase": PASSPHRASE }));
+    assert_eq!(sandboxed.call(&json!({ "method": "items" })).as_array().unwrap().len(), 1);
+    vault.call(&json!({ "method": "stop" }));
+    let items = json!({ "method": "items" }).to_string();
+    let reply = sandboxed.raw(&items);
+    assert!(reply["error"].as_str().unwrap().contains("it stopped"), "{reply}");
+    let reply = sandboxed.raw(&items);
+    assert!(reply["error"].as_str().unwrap().contains("Open Vaulty"), "a sandbox cannot start one: {reply}");
+}
