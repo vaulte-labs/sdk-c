@@ -114,6 +114,8 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
     vault.call(&json!({ "method": "add_login", "name": "github.com", "username": "me", "password": "chosen" }));
     assert_eq!(vault.call(&json!({ "method": "reveal", "name": "github.com" }))["password"], "chosen");
     assert_eq!(vault.call(&json!({ "method": "item", "name": "github.com" }))["urls"][0], "https://github.com");
+    vault.call(&json!({ "method": "add_login", "name": "tax.info", "urls": ["https://irs.gov/login"], "password": "x" }));
+    assert_eq!(vault.call(&json!({ "method": "item", "name": "tax.info" }))["urls"], json!(["https://irs.gov/login"]), "given sites replace a guess");
 
     let secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
     vault.call(
@@ -126,7 +128,14 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
 
     vault.call(&json!({ "method": "add_login", "name": "generated" }));
     let generated = vault.call(&json!({ "method": "reveal", "name": "generated" }));
-    assert!(generated["password"].as_str().unwrap().len() >= 16, "{generated}");
+    assert_eq!(generated["password"].as_str().unwrap().chars().count(), 28, "{generated}");
+
+    let mut meta = vault.call(&json!({ "method": "item", "name": "generated" }));
+    meta.as_object_mut().unwrap().remove("space");
+    meta["username"] = json!("changed");
+    vault.call(&json!({ "method": "edit", "name": "generated", "meta": meta }));
+    assert_eq!(vault.call(&json!({ "method": "item", "name": "generated" }))["username"], "changed");
+    assert_eq!(vault.call(&json!({ "method": "reveal", "name": "generated" }))["password"], generated["password"], "an edit with no secret keeps it");
 
     vault.call(&json!({ "method": "add_note", "name": "plan", "body": "one\ntwo" }));
     assert_eq!(vault.call(&json!({ "method": "reveal", "name": "plan" }))["body"], "one\ntwo");
@@ -147,6 +156,7 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
     let secret = json!({ "type": "card", "number": "5555555555554444", "expiry": "01/31", "cvc": "999", "holder": "A Person" });
     vault.call(&json!({ "method": "replace", "meta": meta, "secret": secret }));
     assert!(vault.call(&json!({ "method": "item", "name": "Visa" }))["hint"].as_str().unwrap().contains("4444"), "the hint follows the number");
+    assert_eq!(vault.call(&json!({ "method": "expiring" })), json!([]), "a card good until 2031 is not running out");
     vault.call(&json!({ "method": "stop" }));
 }
 
@@ -221,6 +231,10 @@ fn the_recovery_key_is_replaced_only_after_the_new_one_is_confirmed() {
     let recovered = Handle::open(&fresh);
     recovered.call(&json!({ "method": "recover_open", "source": archive, "words": words, "as_it_stood": false }));
     assert_eq!(recovered.call(&json!({ "method": "recover_problems" })), json!([]));
+    let histories = recovered.call(&json!({ "method": "recover_histories" }));
+    assert_eq!(histories, json!([{ "devices": ["test mac"], "newest_items": [] }]), "one history, so nothing to choose");
+    assert!(recovered.raw(r#"{"method":"recover_choose","index":1}"#).get("error").is_some());
+    recovered.call(&json!({ "method": "recover_choose", "index": 0 }));
     recovered.call(&json!({ "method": "recover_finish", "passphrase": PASSPHRASE, "device_name": "new mac" }));
     recovered.call(&json!({ "method": "connect", "passphrase": PASSPHRASE }));
     assert_eq!(
@@ -251,7 +265,10 @@ fn backups_grants_and_two_factor_codes_go_through_the_client() {
     vault.call(&json!({ "method": "end_grant", "id": grant["id"] }));
     assert_eq!(vault.call(&json!({ "method": "grants" })), json!([]));
 
-    assert_eq!(vault.call(&json!({ "method": "totp_code", "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" })).as_str().unwrap().len(), 6);
+    vault.call(&json!({ "method": "add_login", "name": "github.com", "password": "x", "totp": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" }));
+    let code = vault.call(&json!({ "method": "code", "name": "github.com" }));
+    assert_eq!(code["code"].as_str().unwrap().len(), 6, "{code}");
+    assert!((1..=30).contains(&code["seconds_left"].as_u64().unwrap()), "{code}");
     vault.call(&json!({ "method": "stop" }));
 }
 
@@ -356,4 +373,30 @@ fn a_limited_handle_never_loses_its_limit_when_the_broker_restarts() {
         assert!(reply.get("error").is_some(), "{reply}");
     }
     owner.call(&json!({ "method": "stop" }));
+}
+
+#[test]
+fn generated_values_take_the_shape_asked_for() {
+    let dir = tempfile::tempdir().unwrap();
+    let vault = Handle::open(&dir.path().join("vault"));
+    let plain = vault.call(&json!({ "method": "generate_password", "length": 16, "symbols": false }));
+    assert!(plain.as_str().unwrap().len() == 16 && plain.as_str().unwrap().chars().all(char::is_alphanumeric), "{plain}");
+    let secret = vault.call(&json!({ "method": "generate_secret", "bytes": 64 }));
+    assert!(secret.as_str().unwrap().len() == 128 && secret.as_str().unwrap().chars().all(|digit| digit.is_ascii_hexdigit()), "{secret}");
+    assert!(vault.raw(r#"{"method":"generate_secret","bytes":48}"#).get("error").is_some());
+}
+
+#[test]
+fn a_sites_icon_is_saved_once_and_read_back_as_pixels() {
+    /// One opaque red pixel.
+    const PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    let dir = tempfile::tempdir().unwrap();
+    let vault = new_vault(&dir.path().join("vault"));
+    vault.call(&json!({ "method": "unlock" }));
+    assert_eq!(vault.call(&json!({ "method": "icon", "url": "https://github.com" })), Value::Null);
+    vault.call(&json!({ "method": "save_icon", "url": "https://github.com/login", "png": PNG }));
+    let icon = vault.call(&json!({ "method": "icon", "url": "https://www.github.com" }));
+    assert_eq!((icon["width"].as_u64(), icon["rgba"].as_array().map(Vec::len)), (Some(1), Some(4)), "{icon}");
+    assert!(vault.raw(r#"{"method":"save_icon","url":"https://x.example","png":"not base64!"}"#).get("error").is_some());
+    vault.call(&json!({ "method": "stop" }));
 }

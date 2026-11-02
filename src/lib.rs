@@ -6,6 +6,7 @@
 compile_error!("test-hooks stand in for a person, so they must never reach a release build");
 
 mod call;
+mod vault;
 
 use std::ffi::{CStr, CString, c_char};
 use std::path::PathBuf;
@@ -15,7 +16,8 @@ use std::sync::{Mutex, PoisonError};
 use libvault::Error;
 use zeroize::{Zeroize, Zeroizing};
 
-use crate::call::{Call, Vault};
+use crate::call::Call;
+use crate::vault::Vault;
 
 pub struct LvHandle(Mutex<Vault>);
 
