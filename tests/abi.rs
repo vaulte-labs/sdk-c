@@ -59,7 +59,6 @@ impl Handle {
 
 impl Drop for Handle {
     fn drop(&mut self) {
-        let _ = self.raw(r#"{"method":"status"}"#);
         // SAFETY: closed once, here.
         unsafe { lv_close(self.0) };
     }
@@ -83,11 +82,6 @@ fn new_vault(home: &Path) -> Handle {
     vault
 }
 
-fn stop(home: &Path) {
-    let handle = Handle::open(home);
-    let _ = handle.raw(r#"{"method":"connect","passphrase":"test passphrase"}"#);
-}
-
 #[test]
 fn a_vault_is_created_used_and_locked_through_the_abi() {
     let dir = tempfile::tempdir().unwrap();
@@ -108,7 +102,7 @@ fn a_vault_is_created_used_and_locked_through_the_abi() {
 
     vault.call(&json!({ "method": "lock" }));
     assert_eq!(vault.call(&json!({ "method": "status" }))["unlocked"], false);
-    stop(&home);
+    vault.call(&json!({ "method": "stop" }));
 }
 
 #[test]
@@ -138,7 +132,7 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
     assert!(vault.raw(&bad.to_string()).get("error").is_some(), "a bad card number is refused");
 
     assert!(vault.raw(&json!({ "method": "add_note", "name": "plan", "body": "again" }).to_string()).get("error").is_some(), "adding never replaces");
-    stop(&home);
+    vault.call(&json!({ "method": "stop" }));
 }
 
 #[test]
@@ -149,7 +143,7 @@ fn a_failure_carries_a_stable_code_and_no_result() {
     let reply = vault.raw(r#"{"method":"reveal","name":"NOPE"}"#);
     assert_eq!(reply["code"], "not_found");
     assert!(reply.get("result").is_none());
-    stop(&home);
+    vault.call(&json!({ "method": "stop" }));
 }
 
 #[test]
