@@ -273,6 +273,10 @@ impl Vault {
             }
             Call::Reveal { space, name } => json(&self.client()?.reveal(space.as_deref(), &name)?),
             Call::Code { space, name } => json(&self.client()?.code(space.as_deref(), &name)?),
+            Call::RemoveCode { space, name } => {
+                self.client()?.remove_code(space.as_deref(), &name)?;
+                done()
+            }
             Call::Expiring => json(&self.client()?.expiring()?),
             Call::Icon { space, url } => json(&self.client()?.icon(space.as_deref(), &url)?),
             Call::SaveIcon { space, url, png } => {

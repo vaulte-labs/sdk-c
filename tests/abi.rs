@@ -122,7 +122,10 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
         &json!({ "method": "add_login", "name": "two-factor", "urls": ["https://a.example", "https://b.example"], "password": "x", "totp": secret }),
     );
     assert_eq!(vault.call(&json!({ "method": "item", "name": "two-factor" }))["urls"].as_array().unwrap().len(), 2);
-    assert_eq!(vault.call(&json!({ "method": "reveal", "name": "two-factor" }))["totp"], secret);
+    assert_eq!(vault.call(&json!({ "method": "reveal", "name": "two-factor" }))["totp"], Value::Null, "the setup key stays in the broker");
+    assert_eq!(vault.call(&json!({ "method": "item", "name": "two-factor" }))["two_factor"], true);
+    vault.call(&json!({ "method": "remove_code", "name": "two-factor" }));
+    assert!(vault.call(&json!({ "method": "item", "name": "two-factor" })).get("two_factor").is_none());
     let bad = json!({ "method": "add_login", "name": "bad-code", "password": "x", "totp": "not a secret!" });
     assert!(vault.raw(&bad.to_string()).get("error").is_some(), "a two-factor secret that cannot work is refused");
 

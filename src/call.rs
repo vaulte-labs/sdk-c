@@ -164,6 +164,11 @@ pub enum Call {
         space: Option<String>,
         name: String,
     },
+    /// Takes two-factor off a login, after a touch. An edit that sends no setup key keeps it.
+    RemoveCode {
+        space: Option<String>,
+        name: String,
+    },
     /// Cards that run out soon, for a reminder. Never asks for a touch.
     Expiring,
     /// The icon saved for a site, as RGBA pixels decoded in safe code, or null.
