@@ -165,9 +165,8 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
     vault.call(&json!({ "method": "set_lock_settings", "settings": never }));
     assert_eq!(vault.call(&json!({ "method": "lock_settings" })), never);
 
-    let identities = vault.call(&json!({ "method": "autofill_identities" }));
-    assert!(identities.as_array().unwrap().iter().any(|identity| identity["site"] == "github.com" && identity["username"] == "me"), "{identities}");
-    assert!(!identities.to_string().contains("chosen"), "no password goes to autofill");
+    let identities = vault.raw(&json!({ "method": "autofill_identities" }).to_string());
+    assert_eq!(identities["code"], "denied", "only the signed app hands identities to AutoFill: {identities}");
     let offered = vault.call(&json!({ "method": "fill_options", "origin": "https://github.com/login" }));
     assert!(offered.as_array().unwrap().iter().any(|option| option["name"] == "github.com"), "{offered}");
     let filled = vault.call(&json!({ "method": "fill", "space": "Personal", "name": "github.com", "origin": "https://github.com/login" }));
@@ -464,7 +463,7 @@ fn a_sandboxed_handle_reaches_a_running_broker_through_the_shared_folder() {
     let reply = sandboxed.raw(&items);
     assert!(reply["error"].as_str().unwrap().contains("it stopped"), "{reply}");
     let reply = sandboxed.raw(&items);
-    assert!(reply["error"].as_str().unwrap().contains("Open Vaulty"), "a sandbox cannot start one: {reply}");
+    assert!(reply["error"].as_str().unwrap().contains("Open Vaulte"), "a sandbox cannot start one: {reply}");
 }
 
 #[test]

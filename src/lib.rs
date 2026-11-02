@@ -66,7 +66,7 @@ pub unsafe extern "C" fn lv_call(handle: *mut LvHandle, call: *const c_char) -> 
     let (handle, call) = unsafe { (&*handle, CStr::from_ptr(call)) };
     let call: Call = match serde_json::from_slice(call.to_bytes()) {
         Ok(call) => call,
-        Err(_) => return error_reply(&Error::Usage("that call makes no sense")),
+        Err(error) => return error_reply(&Error::Unreadable(format!("that call could not be read: {error}"))),
     };
     match handle.0.lock().unwrap_or_else(PoisonError::into_inner).run(call) {
         Ok(result) => {

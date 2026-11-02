@@ -19,16 +19,22 @@ Four functions carry JSON, so every SDK shares one implementation of the protoco
 capability is a new call, not a new symbol:
 
 ```c
+#include <stdio.h>
 #include "vaulty.h"
 
-LvHandle *vault = lv_open(NULL);                          /* the default vault; touches nothing */
-char *reply = lv_call(vault, "{\"method\":\"items\"}");   /* {"result":...} or {"error":"...","code":"..."} */
-/* ... */
-lv_free_string(reply);                                    /* erases it first: a reply may hold a secret */
-lv_close(vault);
+int main(void) {
+    LvHandle *vault = lv_open(NULL);                          /* the default vault; touches nothing */
+    char *reply = lv_call(vault, "{\"method\":\"items\"}");   /* {"result":...} or {"error":"...","code":"..."} */
+    puts(reply);
+    lv_free_string(reply);                                    /* erases it first: a reply may hold a secret */
+    lv_close(vault);
+    return 0;
+}
 ```
 
 `lv_call` blocks for as long as a person takes to answer a prompt, so call it off the main thread.
+Calls on one handle run one at a time; open a handle per thread to run them side by side. The
+header lists the error codes a reply can carry.
 Every call, with its fields, is documented in [src/call.rs](src/call.rs). A call is
 `{"method": ...}` in snake case plus its fields, such as
 `{"method":"reveal","space":"Work","name":"OPENAI_API_KEY"}`.
