@@ -254,11 +254,7 @@ impl Vault {
                 self.add(space.as_deref(), meta, secret)
             }
             Call::AddProfile { space, name, profile } => self.add(space.as_deref(), Meta::new(Kind::Profile, name), Secret::Profile(profile)),
-            Call::Edit { space, name, mut meta, secret } => {
-                // A card's number is checked, and its hint made from it, only by `item::card`.
-                if let Some(Secret::Card { number, expiry, cvc, holder }) = &secret {
-                    meta.hint = item::card(meta.name.clone(), number, expiry.clone(), cvc.clone(), holder.clone())?.0.hint;
-                }
+            Call::Edit { space, name, meta, secret } => {
                 self.client()?.edit(space.as_deref(), &name, meta, secret)?;
                 done()
             }
