@@ -1,6 +1,6 @@
 //! The C ABI over libvault. Four functions carry JSON, so every SDK shares one implementation of
 //! the protocol and a new capability is a new [`call::Call`], not a new symbol. Policy stays in
-//! the broker: nothing here can do what `lv` could not.
+//! the broker: nothing here can do what `vlt` could not.
 
 #[cfg(all(feature = "test-hooks", not(debug_assertions)))]
 compile_error!("test-hooks stand in for a person, so they must never reach a release build");
