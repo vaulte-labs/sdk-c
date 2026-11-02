@@ -145,6 +145,12 @@ pub enum Call {
         name: String,
         profile: Profile,
     },
+    /// Shows an item in the space `to` as well, after a touch. Later changes reach every copy.
+    Link {
+        space: Option<String>,
+        name: String,
+        to: String,
+    },
     /// Changes what is shown about an item, and its secret only when one is given, after a touch.
     /// The old version stays in its history.
     Edit {
@@ -186,6 +192,23 @@ pub enum Call {
     Expiring,
     /// Each login's sites and username for the system's autofill to suggest, never a secret.
     AutofillIdentities,
+    /// The passkeys that fit `origin`, or only those of `allow` (credential ids) when the site
+    /// names its own. Never a prompt.
+    PasskeyOptions {
+        origin: String,
+        allow: Option<Vec<Vec<u8>>>,
+    },
+    /// Makes and saves a passkey for the site, after a touch: `{origin, rp_id, user_name,
+    /// user_handle, exclude?, space?}`, with byte fields as arrays of numbers.
+    CreatePasskey(libvault::PasskeyRequest),
+    /// Signs a sign-in on `origin` with a saved passkey, after a touch. `client_data_hash` is the
+    /// SHA-256 of the client data built for the page.
+    SignPasskey {
+        space: String,
+        name: String,
+        origin: String,
+        client_data_hash: Vec<u8>,
+    },
     /// When this device's vault locks by itself: `{stay_unlocked, with_screen}`.
     LockSettings,
     /// Changes when this device's vault locks by itself, after a touch. `stay_unlocked` is

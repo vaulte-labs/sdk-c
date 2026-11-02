@@ -278,6 +278,10 @@ impl Vault {
                 self.add(space.as_deref(), meta, secret)
             }
             Call::AddProfile { space, name, profile } => self.add(space.as_deref(), Meta::new(Kind::Profile, name), Secret::Profile(profile)),
+            Call::Link { space, name, to } => {
+                self.client()?.link(space.as_deref(), &name, &to)?;
+                done()
+            }
             Call::Edit { space, name, meta, secret } => {
                 self.client()?.edit(space.as_deref(), &name, meta, secret)?;
                 done()
@@ -300,6 +304,11 @@ impl Vault {
             }
             Call::Expiring => json(&self.client()?.expiring()?),
             Call::AutofillIdentities => json(&self.client()?.autofill_identities()?),
+            Call::PasskeyOptions { origin, allow } => json(&self.client()?.passkey_options(&origin, allow.unwrap_or_default())?),
+            Call::CreatePasskey(request) => json(&self.client()?.create_passkey(request)?),
+            Call::SignPasskey { space, name, origin, client_data_hash } => {
+                json(&self.client()?.sign_passkey(&space, &name, &origin, &client_data_hash)?)
+            }
             Call::LockSettings => json(&self.client()?.lock_settings()?),
             Call::SetLockSettings { settings } => {
                 self.client()?.set_lock_settings(settings)?;

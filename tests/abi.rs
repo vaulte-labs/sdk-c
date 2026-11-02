@@ -463,3 +463,25 @@ fn a_sandboxed_handle_reaches_a_running_broker_through_the_shared_folder() {
     let reply = sandboxed.raw(&items);
     assert!(reply["error"].as_str().unwrap().contains("Open Vaulty"), "a sandbox cannot start one: {reply}");
 }
+
+#[test]
+fn an_item_shown_in_two_spaces_and_a_passkey_go_through_the_client() {
+    let dir = tempfile::tempdir().unwrap();
+    let vault = new_vault(&dir.path().join("vault"));
+    vault.call(&json!({ "method": "unlock" }));
+    vault.call(&json!({ "method": "create_space", "name": "Agents" }));
+    vault.call(&json!({ "method": "add_env", "name": "API_KEY", "value": "v" }));
+    vault.call(&json!({ "method": "link", "name": "API_KEY", "to": "Agents" }));
+    assert_eq!(vault.call(&json!({ "method": "item", "name": "API_KEY" }))["also_in"], json!(["Agents"]));
+
+    let request =
+        json!({ "method": "create_passkey", "origin": "https://github.com", "rp_id": "github.com", "user_name": "alice", "user_handle": [1, 2, 3] });
+    let created = vault.call(&request);
+    assert_eq!(created["name"], "alice on github.com");
+    let offered = vault.call(&json!({ "method": "passkey_options", "origin": "https://github.com/login" }));
+    assert_eq!(offered[0]["user_name"], "alice", "{offered}");
+    let signed = vault.call(&json!({ "method": "sign_passkey", "space": "Personal", "name": "alice on github.com", "origin": "https://github.com", "client_data_hash": vec![7u8; 32] }));
+    assert_eq!(signed["credential_id"], created["credential_id"]);
+    assert_eq!(signed["user_handle"], json!([1, 2, 3]));
+    vault.call(&json!({ "method": "stop" }));
+}
