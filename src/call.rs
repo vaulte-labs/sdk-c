@@ -34,6 +34,8 @@ pub enum Call {
         session: Option<Zeroizing<String>>,
     },
     Status,
+    /// Stops the broker, which locks the vault.
+    Stop,
     Unlock,
     Lock,
     Spaces,
@@ -180,6 +182,11 @@ impl Vault {
                 done()
             }
             Call::Status => json(&self.client()?.status()?),
+            Call::Stop => {
+                self.client()?.stop()?;
+                self.client = None;
+                done()
+            }
             Call::Unlock => {
                 self.client()?.unlock()?;
                 done()
