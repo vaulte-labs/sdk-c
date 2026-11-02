@@ -154,7 +154,7 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
     let mut meta = vault.call(&json!({ "method": "item", "name": "Visa" }));
     meta.as_object_mut().unwrap().remove("space");
     let secret = json!({ "type": "card", "number": "5555555555554444", "expiry": "01/31", "cvc": "999", "holder": "A Person" });
-    vault.call(&json!({ "method": "replace", "meta": meta, "secret": secret }));
+    vault.call(&json!({ "method": "edit", "name": "Visa", "meta": meta, "secret": secret }));
     assert!(vault.call(&json!({ "method": "item", "name": "Visa" }))["hint"].as_str().unwrap().contains("4444"), "the hint follows the number");
     assert_eq!(vault.call(&json!({ "method": "expiring" })), json!([]), "a card good until 2031 is not running out");
     vault.call(&json!({ "method": "stop" }));
@@ -170,7 +170,7 @@ fn an_item_changes_and_its_old_versions_can_come_back() {
     let mut meta = vault.call(&json!({ "method": "item", "name": "github.com" }));
     meta.as_object_mut().unwrap().remove("space");
     meta["username"] = json!("someone else");
-    vault.call(&json!({ "method": "replace", "meta": meta, "secret": { "type": "login", "password": "second" } }));
+    vault.call(&json!({ "method": "edit", "name": "github.com", "meta": meta, "secret": { "type": "login", "password": "second" } }));
     assert_eq!(vault.call(&json!({ "method": "item", "name": "github.com" }))["username"], "someone else");
     assert_eq!(vault.call(&json!({ "method": "reveal", "name": "github.com" }))["password"], "second");
 
@@ -307,6 +307,26 @@ fn a_second_device_joins_when_both_people_see_the_same_words() {
     assert_eq!(existing.call(&json!({ "method": "devices" })).as_array().unwrap().len(), 2);
     existing.call(&json!({ "method": "stop" }));
     joining.call(&json!({ "method": "stop" }));
+}
+
+#[test]
+fn a_wifi_network_is_saved_by_its_name_and_a_bad_card_edit_changes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("vault");
+    let vault = new_vault(&home);
+    vault.call(&json!({ "method": "add_wifi", "name": "Larch", "password": "hunter22" }));
+    assert_eq!(vault.call(&json!({ "method": "item", "name": "Larch" }))["kind"], "wifi");
+    assert_eq!(vault.call(&json!({ "method": "reveal", "name": "Larch" }))["password"], "hunter22");
+    let long = "x".repeat(33);
+    assert!(vault.raw(&json!({ "method": "add_wifi", "name": long, "password": "p" }).to_string()).get("error").is_some(), "a network name is short");
+
+    vault.call(&json!({ "method": "add_card", "name": "Visa", "number": "4242424242424242", "expiry": "12/30", "cvc": "123", "holder": "A" }));
+    let mut meta = vault.call(&json!({ "method": "item", "name": "Visa" }));
+    meta.as_object_mut().unwrap().remove("space");
+    let bad = json!({ "method": "edit", "name": "Visa", "meta": meta, "secret": { "type": "card", "number": "1234", "expiry": "12/30", "cvc": "1", "holder": "A" } });
+    assert!(vault.raw(&bad.to_string()).get("error").is_some(), "an edited number is checked like a new one");
+    assert_eq!(vault.call(&json!({ "method": "reveal", "name": "Visa" }))["number"], "4242424242424242");
+    vault.call(&json!({ "method": "stop" }));
 }
 
 #[test]

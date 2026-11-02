@@ -243,6 +243,9 @@ impl Vault {
                 self.add(space.as_deref(), meta, Secret::Login { password, totp: totp.map(|totp| totp.to_string()) })
             }
             Call::AddNote { space, name, body } => self.add(space.as_deref(), Meta::new(Kind::Note, name), Secret::Note { body: body.to_string() }),
+            Call::AddWifi { space, name, password } => {
+                self.add(space.as_deref(), Meta::new(Kind::Wifi, name), Secret::Wifi { password: password.to_string() })
+            }
             Call::AddSsh { space, name, private_key } => {
                 self.add(space.as_deref(), Meta::new(Kind::Ssh, name), Secret::Ssh { private_key: private_key.to_string() })
             }
@@ -250,18 +253,12 @@ impl Vault {
                 let (meta, secret) = item::card(name, &number, expiry, cvc.to_string(), holder)?;
                 self.add(space.as_deref(), meta, secret)
             }
-            Call::Edit { space, name, meta, secret } => {
-                self.client()?.edit(space.as_deref(), &name, meta, secret)?;
-                done()
-            }
-            Call::Replace { space, meta, secret } => {
-                // A card's hint comes from its number, so a new number has to make a new hint.
-                if let Secret::Card { number, expiry, cvc, holder } = &secret {
-                    let (meta, secret) = item::card(meta.name, number, expiry.clone(), cvc.clone(), holder.clone())?;
-                    self.client()?.add(space.as_deref(), meta, secret, true)?;
-                } else {
-                    self.client()?.add(space.as_deref(), meta, secret, true)?;
+            Call::Edit { space, name, mut meta, secret } => {
+                // A card's number is checked, and its hint made from it, only by `item::card`.
+                if let Some(Secret::Card { number, expiry, cvc, holder }) = &secret {
+                    meta.hint = item::card(meta.name.clone(), number, expiry.clone(), cvc.clone(), holder.clone())?.0.hint;
                 }
+                self.client()?.edit(space.as_deref(), &name, meta, secret)?;
                 done()
             }
             Call::Remove { space, name } => {

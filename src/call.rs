@@ -117,6 +117,12 @@ pub enum Call {
         name: String,
         private_key: Zeroizing<String>,
     },
+    /// The network's name is the item's name.
+    AddWifi {
+        space: Option<String>,
+        name: String,
+        password: Zeroizing<String>,
+    },
     /// The library checks the number and keeps only a safe hint in view.
     AddCard {
         space: Option<String>,
@@ -133,12 +139,6 @@ pub enum Call {
         name: String,
         meta: Meta,
         secret: Option<Secret>,
-    },
-    /// Replaces an item that exists, after a touch. The old version stays in its history.
-    Replace {
-        space: Option<String>,
-        meta: Meta,
-        secret: Secret,
     },
     Remove {
         space: Option<String>,
