@@ -275,6 +275,9 @@ impl Vault {
                 done()
             }
             Call::Expiring => json(&self.client()?.expiring()?),
+            Call::AutofillIdentities => json(&self.client()?.autofill_identities()?),
+            Call::FillOptions { origin } => json(&self.client()?.fill_options(&origin)?),
+            Call::Fill { space, name, origin } => json(&self.client()?.fill(&space, &name, &origin)?),
             Call::Icon { space, url } => json(&self.client()?.icon(space.as_deref(), &url)?),
             Call::SaveIcon { space, url, png } => {
                 let png = base64::engine::general_purpose::STANDARD.decode(png).map_err(|_| Error::Invalid("an icon must be PNG bytes in base64"))?;

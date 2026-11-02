@@ -160,6 +160,14 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
     let typo = json!({ "method": "add_profile", "name": "Work", "profile": { "email": "jane.example.com" } });
     assert!(vault.raw(&typo.to_string()).get("error").is_some(), "the library checks a profile's details");
 
+    let identities = vault.call(&json!({ "method": "autofill_identities" }));
+    assert!(identities.as_array().unwrap().iter().any(|identity| identity["site"] == "github.com" && identity["username"] == "me"), "{identities}");
+    assert!(!identities.to_string().contains("chosen"), "no password goes to autofill");
+    let offered = vault.call(&json!({ "method": "fill_options", "origin": "https://github.com/login" }));
+    assert!(offered.as_array().unwrap().iter().any(|option| option["name"] == "github.com"), "{offered}");
+    let filled = vault.call(&json!({ "method": "fill", "space": "Personal", "name": "github.com", "origin": "https://github.com/login" }));
+    assert_eq!(filled["secret"]["password"], "chosen");
+
     let mut meta = vault.call(&json!({ "method": "item", "name": "Visa" }));
     meta.as_object_mut().unwrap().remove("space");
     let secret = json!({ "type": "card", "number": "5555555555554444", "expiry": "01/31", "cvc": "999", "holder": "A Person" });

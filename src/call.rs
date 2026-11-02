@@ -177,6 +177,18 @@ pub enum Call {
     },
     /// Cards that run out soon, for a reminder. Never asks for a touch.
     Expiring,
+    /// Each login's sites and username for the system's autofill to suggest, never a secret.
+    AutofillIdentities,
+    /// What could fill at `origin`, which the system or browser reports, not the page.
+    FillOptions {
+        origin: String,
+    },
+    /// What to put on the page at `origin`, after a touch naming the item and the site.
+    Fill {
+        space: String,
+        name: String,
+        origin: String,
+    },
     /// The icon saved for a site, as RGBA pixels decoded in safe code, or null.
     Icon {
         space: Option<String>,
