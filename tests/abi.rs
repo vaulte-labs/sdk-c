@@ -223,7 +223,8 @@ fn a_file_is_previewed_as_counts_then_imported_as_one_batch() {
     assert!(!preview.to_string().contains("real-value"), "a preview holds counts");
     assert_eq!(vault.call(&json!({ "method": "items" })), json!([]), "reading writes nothing");
 
-    assert_eq!(vault.call(&json!({ "method": "import_finish" }))["added"], 2);
+    assert!(vault.raw(r#"{"method":"import_finish","space":"Nowhere"}"#).get("error").is_some());
+    assert_eq!(vault.call(&json!({ "method": "import_finish" }))["added"], 2, "a refused import keeps what was read");
     assert_eq!(vault.call(&json!({ "method": "items" })).as_array().unwrap().len(), 2);
     vault.call(&json!({ "method": "undo" }));
     assert_eq!(vault.call(&json!({ "method": "items" })), json!([]), "one undo removes the import");
@@ -246,7 +247,9 @@ fn the_recovery_key_is_replaced_only_after_the_new_one_is_confirmed() {
         let word = list[usize::try_from(position.as_u64().unwrap()).unwrap()];
         assert_eq!(vault.call(&json!({ "method": "rotation_check_word", "position": position, "answer": word })), true);
     }
+    assert!(vault.raw(r#"{"method":"rotation_finish","recovery":"not a recovery key"}"#).get("error").is_some());
     vault.call(&json!({ "method": "rotation_finish" }));
+    assert!(vault.raw(r#"{"method":"rotation_finish"}"#).get("error").is_some(), "a replaced key is not replaced again");
 
     vault.call(&json!({ "method": "export_archive", "path": archive }));
     vault.call(&json!({ "method": "stop" }));
@@ -383,6 +386,23 @@ fn setup_steps_need_setup_to_have_begun() {
     let vault = Handle::open(dir.path());
     assert!(vault.raw(r#"{"method":"setup_words"}"#).get("error").is_some());
     assert!(vault.raw(r#"{"method":"setup_finish","device_name":"x"}"#).get("error").is_some());
+}
+
+#[test]
+fn a_setup_that_could_not_finish_finishes_on_the_next_try_with_the_same_words() {
+    let dir = tempfile::tempdir().unwrap();
+    let blocked = dir.path().join("blocked");
+    std::fs::write(&blocked, "").unwrap();
+    let vault = Handle::open(&blocked.join("vault"));
+    vault.call(&json!({ "method": "setup_begin", "passphrase": PASSPHRASE }));
+    let words = vault.call(&json!({ "method": "setup_words" }));
+    assert!(vault.raw(r#"{"method":"setup_finish","device_name":"x"}"#).get("error").is_some());
+
+    std::fs::remove_file(&blocked).unwrap();
+    assert_eq!(vault.call(&json!({ "method": "setup_words" })), words);
+    vault.call(&json!({ "method": "setup_finish", "device_name": "x" }));
+    assert_eq!(vault.call(&json!({ "method": "exists" })), true);
+    assert!(vault.raw(r#"{"method":"setup_words"}"#).get("error").is_some(), "a finished setup is gone");
 }
 
 #[test]

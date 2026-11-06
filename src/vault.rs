@@ -167,8 +167,8 @@ impl Vault {
             Call::SetupPositions => json(&self.setup()?.recovery().confirmation_positions()),
             Call::SetupCheckWord { position, answer } => json(&self.setup()?.recovery().check_word(position, &answer)),
             Call::SetupFinish { device_name } => {
-                let setup = self.setup.take().ok_or(Error::Usage("begin setup first"))?;
-                setup.finish(&self.home, &device_name)?;
+                self.setup()?.finish(&self.home, &device_name)?;
+                self.setup = None;
                 done()
             }
             Call::JoinBegin { passphrase, device_name } => {
@@ -354,8 +354,10 @@ impl Vault {
                 reply
             }
             Call::ImportFinish { space } => {
-                let file = self.import.take().ok_or(Error::Usage("read a file first"))?;
-                json(&self.client()?.import(space.as_deref(), file.items)?)
+                let items = self.import.as_ref().ok_or(Error::Usage("read a file first"))?.items.clone();
+                let imported = self.client()?.import(space.as_deref(), items)?;
+                self.import = None;
+                json(&imported)
             }
             Call::Devices => json(&self.client()?.devices()?),
             Call::PairBegin { address } => json(&self.client()?.begin_pairing(address.as_deref())?),
@@ -369,8 +371,14 @@ impl Vault {
             Call::RotationPositions => json(&self.rotation()?.confirmation_positions()),
             Call::RotationCheckWord { position, answer } => json(&self.rotation()?.check_word(position, &answer)),
             Call::RotationFinish { recovery } => {
+                // Held until it works, so a refusal that wants the current recovery key can be
+                // answered with the same new words.
                 let draft = self.rotation.take().ok_or(Error::Usage("begin replacing the recovery key first"))?;
-                self.client()?.rotate_recovery(&draft, recovery.as_ref().map(|words| words.as_str()))?;
+                let rotated = self.client().and_then(|client| client.rotate_recovery(&draft, recovery.as_ref().map(|words| words.as_str())));
+                if rotated.is_err() {
+                    self.rotation = Some(draft);
+                }
+                rotated?;
                 done()
             }
             Call::ExportArchive { path } => {
