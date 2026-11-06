@@ -124,8 +124,12 @@ fn every_kind_of_item_goes_through_the_librarys_rules() {
     assert_eq!(vault.call(&json!({ "method": "item", "name": "two-factor" }))["urls"].as_array().unwrap().len(), 2);
     assert_eq!(vault.call(&json!({ "method": "reveal", "name": "two-factor" }))["totp"], Value::Null, "the setup key stays in the broker");
     assert_eq!(vault.call(&json!({ "method": "item", "name": "two-factor" }))["two_factor"], true);
-    vault.call(&json!({ "method": "remove_code", "name": "two-factor" }));
-    assert!(vault.call(&json!({ "method": "item", "name": "two-factor" })).get("two_factor").is_none());
+    let mut coded = vault.call(&json!({ "method": "item", "name": "two-factor" }));
+    coded.as_object_mut().unwrap().remove("space");
+    coded["username"] = json!("me");
+    vault.call(&json!({ "method": "edit", "name": "two-factor", "meta": coded, "remove_code": true }));
+    let edited = vault.call(&json!({ "method": "item", "name": "two-factor" }));
+    assert_eq!((edited.get("two_factor"), &edited["username"]), (None, &json!("me")), "one edit took the code off and changed the rest");
     let bad = json!({ "method": "add_login", "name": "bad-code", "password": "x", "totp": "not a secret!" });
     assert!(vault.raw(&bad.to_string()).get("error").is_some(), "a two-factor secret that cannot work is refused");
 
@@ -201,6 +205,18 @@ fn an_item_changes_and_its_old_versions_can_come_back() {
     assert_eq!(vault.call(&json!({ "method": "history", "name": "github.com" })).as_array().unwrap().len(), 2);
     vault.call(&json!({ "method": "restore", "name": "github.com", "version": 0 }));
     assert_eq!(vault.call(&json!({ "method": "reveal", "name": "github.com" }))["password"], "first");
+    let flags: Vec<_> = vault
+        .call(&json!({ "method": "history", "name": "github.com" }))
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|version| (version["restored"].clone(), version["identical"].clone()))
+        .collect();
+    assert_eq!(
+        flags,
+        [(json!(false), json!(true)), (json!(false), json!(false)), (json!(true), json!(true))],
+        "the restore is marked, and the first matches it"
+    );
 
     vault.call(&json!({ "method": "remove", "name": "github.com" }));
     let history = vault.call(&json!({ "method": "history", "name": "github.com" }));
@@ -519,7 +535,7 @@ fn a_space_is_renamed_and_removed_by_name_and_says_what_it_is_called() {
     vault.call(&json!({ "method": "unlock" }));
     vault.call(&json!({ "method": "create_space", "name": " Work " }));
     assert_eq!(vault.call(&json!({ "method": "spaces" })), json!(["Personal", "Work"]));
-    assert_eq!(vault.raw(r#"{"method":"create_space","name":"work"}"#)["code"], "error", "one name each, whatever its case");
+    assert_eq!(vault.raw(r#"{"method":"create_space","name":"work"}"#)["code"], "exists", "one name each, whatever its case");
     assert_eq!(vault.call(&json!({ "method": "rename_space", "name": "Work", "to": "Clients" })), "Clients");
     vault.call(&json!({ "method": "add_env", "space": "Clients", "name": "KEY", "value": "v" }));
     let held = vault.raw(r#"{"method":"remove_space","name":"Clients"}"#);

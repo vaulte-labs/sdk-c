@@ -120,8 +120,16 @@ pub enum Call {
     /// Takes an item out of its space and into `to`, after a touch, as one change.
     Move { space: Option<String>, name: String, to: String },
     /// Changes what is shown about an item, and its secret only when one is given, after a touch.
-    /// The old version stays in its history.
-    Edit { space: Option<String>, name: String, meta: Meta, secret: Option<Secret> },
+    /// An edit that sends no setup key keeps a login's two-factor; `remove_code` takes it off in
+    /// the same change, so one `undo` reverses the whole edit. The old version stays in its history.
+    Edit {
+        space: Option<String>,
+        name: String,
+        meta: Meta,
+        secret: Option<Secret>,
+        #[serde(default)]
+        remove_code: bool,
+    },
     /// Deletes an item, after a touch. `history` and `restore` bring it back.
     Remove { space: Option<String>, name: String },
     /// Removes several items as one change, so one `undo` brings them all back.
@@ -130,8 +138,9 @@ pub enum Call {
     /// change further back. Returns the names of the items it changed back.
     Undo,
     /// An item's versions, oldest first, each with `at_ms`, `deleted`, its `name`, what it
-    /// `changed` from the one before and whether it is `current`. A version's index is what
-    /// `restore` takes.
+    /// `changed` from the one before, whether it is `current`, whether a restore or an undo wrote
+    /// it (`restored`), and whether it holds exactly what the item holds now (`identical`), so
+    /// restoring it would change nothing. A version's index is what `restore` takes.
     History { space: Option<String>, name: String },
     /// Makes one of an item's versions current again, as a new change.
     Restore { space: Option<String>, name: String, version: usize },
@@ -141,10 +150,9 @@ pub enum Call {
     /// leaves the broker.
     Code { space: Option<String>, name: String },
     /// Every login's current code in `space`, or every space, after one touch, which the vault's
-    /// own app does not need while the vault is open (`status.trusted`). One record per call.
+    /// own app does not need while the vault is open (`status.trusted`). One record per call, and
+    /// for that app one per space each time the vault unlocks.
     Codes { space: Option<String> },
-    /// Takes two-factor off a login, after a touch. An edit that sends no setup key keeps it.
-    RemoveCode { space: Option<String>, name: String },
     /// Cards that run out soon, for a reminder. Never asks for a touch.
     Expiring,
     /// Each login's sites and username for the system's autofill to suggest, never a secret.

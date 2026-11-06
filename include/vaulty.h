@@ -8,6 +8,7 @@
  *   needs_passphrase  a vault with no secure hardware needs its passphrase; ask and call again
  *   denied            the person said no, or this caller may not do that
  *   not_found         no such vault, space, item or version
+ *   exists            something by that name is already there; nothing changed
  *   needs_person      only a person can do this, at their device
  *   needs_host        a secret has no host it may be sent to
  *   outdated          the broker running is older than this library; restart it */

@@ -290,8 +290,8 @@ impl Vault {
                 self.client()?.move_item(space.as_deref(), &name, &to)?;
                 done()
             }
-            Call::Edit { space, name, meta, secret } => {
-                self.client()?.edit(space.as_deref(), &name, meta, secret)?;
+            Call::Edit { space, name, meta, secret, remove_code } => {
+                self.client()?.edit(space.as_deref(), &name, meta, secret, remove_code)?;
                 done()
             }
             Call::Remove { space, name } => {
@@ -312,10 +312,6 @@ impl Vault {
             Call::Reveal { space, name } => json(&self.client()?.reveal(space.as_deref(), &name)?),
             Call::Code { space, name } => json(&self.client()?.code(space.as_deref(), &name)?),
             Call::Codes { space } => json(&self.client()?.codes(space.as_deref())?),
-            Call::RemoveCode { space, name } => {
-                self.client()?.remove_code(space.as_deref(), &name)?;
-                done()
-            }
             Call::Expiring => json(&self.client()?.expiring()?),
             Call::AutofillIdentities => json(&self.client()?.autofill_identities()?),
             Call::PasskeyOptions { origin, allow } => json(&self.client()?.passkey_options(&origin, allow.unwrap_or_default())?),
