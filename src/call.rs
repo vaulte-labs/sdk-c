@@ -74,6 +74,10 @@ pub enum Call {
     EndGrant { id: String },
     /// Stops the broker, which locks the vault.
     Stop,
+    /// On iOS, where the broker runs in the app, locks the vault and lets go of it until the next
+    /// call, for an app about to be suspended. Elsewhere the broker is a process of its own, and
+    /// this does nothing.
+    Sleep,
     /// Unlocks the vault, after a touch.
     Unlock,
     /// Locks the vault now, ending every session.

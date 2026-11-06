@@ -234,6 +234,11 @@ impl Vault {
                 self.client = None;
                 done()
             }
+            Call::Sleep => {
+                #[cfg(target_os = "ios")]
+                libvault::broker::sleep_in_process();
+                done()
+            }
             Call::Unlock => {
                 self.client()?.unlock()?;
                 done()

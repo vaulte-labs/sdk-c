@@ -34,3 +34,7 @@ tempfile = "3"
 lto = "fat"
 codegen-units = 1
 panic = "abort"
+
+# iOS starts no other process, so the broker runs inside the app.
+[target.'cfg(target_os = "ios")'.dependencies]
+libvault = { path = "../libvault", default-features = false, features = ["broker"] }
